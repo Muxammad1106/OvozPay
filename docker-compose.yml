@@ -1,0 +1,270 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ovozpay_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ovozpay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supersecurepass123}
+      POSTGRES_DB: ${POSTGRES_DB:-ovozpay_db}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=ru_RU.UTF-8 --lc-ctype=ru_RU.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - ovozpay_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ovozpay} -d ${POSTGRES_DB:-ovozpay_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: ovozpay_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redispass123}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - ovozpay_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Django Backend Application
+  django_app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ovozpay_backend
+    restart: unless-stopped
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ovozpay}:${POSTGRES_PASSWORD:-supersecurepass123}@postgres:5432/${POSTGRES_DB:-ovozpay_db}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redispass123}@redis:6379/0
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,ovozpay.uz}
+      - OCR_SERVICE_URL=http://tesseract_ocr:8001
+      - WHISPER_SERVICE_URL=http://whisper_voice:8002
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+      - ./backend/logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ovozpay_network
+    healthcheck:
+      test: ["CMD", "python", "manage.py", "check", "--deploy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ovozpay_celery_worker
+    restart: unless-stopped
+    command: celery -A config worker --loglevel=info --concurrency=2
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ovozpay}:${POSTGRES_PASSWORD:-supersecurepass123}@postgres:5432/${POSTGRES_DB:-ovozpay_db}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redispass123}@redis:6379/0
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - OCR_SERVICE_URL=http://tesseract_ocr:8001
+      - WHISPER_SERVICE_URL=http://whisper_voice:8002
+    volumes:
+      - media_volume:/app/media
+      - ./backend/logs:/app/logs
+    depends_on:
+      - django_app
+      - redis
+    networks:
+      - ovozpay_network
+
+  # Celery Beat (for scheduled tasks)
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ovozpay_celery_beat
+    restart: unless-stopped
+    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ovozpay}:${POSTGRES_PASSWORD:-supersecurepass123}@postgres:5432/${POSTGRES_DB:-ovozpay_db}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redispass123}@redis:6379/0
+    volumes:
+      - ./backend/logs:/app/logs
+    depends_on:
+      - django_app
+      - redis
+    networks:
+      - ovozpay_network
+
+  # Tesseract OCR Service
+  tesseract_ocr:
+    build:
+      context: ./docker/tesseract
+      dockerfile: Dockerfile
+    container_name: ovozpay_tesseract
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    volumes:
+      - ocr_temp:/tmp/ocr
+    networks:
+      - ovozpay_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Whisper Voice Recognition Service
+  whisper_voice:
+    build:
+      context: ./docker/whisper
+      dockerfile: Dockerfile
+    container_name: ovozpay_whisper
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    volumes:
+      - whisper_models:/app/models
+      - whisper_temp:/tmp/whisper
+    networks:
+      - ovozpay_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Telegram Bot (separate service)
+  telegram_bot:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.bot
+    container_name: ovozpay_bot
+    restart: unless-stopped
+    command: python manage.py run_bot
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ovozpay}:${POSTGRES_PASSWORD:-supersecurepass123}@postgres:5432/${POSTGRES_DB:-ovozpay_db}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redispass123}@redis:6379/0
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - OCR_SERVICE_URL=http://tesseract_ocr:8001
+      - WHISPER_SERVICE_URL=http://whisper_voice:8002
+    volumes:
+      - media_volume:/app/media
+      - ./backend/logs:/app/logs
+    depends_on:
+      - django_app
+      - tesseract_ocr
+      - whisper_voice
+    networks:
+      - ovozpay_network
+
+  # Nginx Reverse Proxy
+  nginx:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    container_name: ovozpay_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+      - certbot_www:/var/www/certbot/:ro
+      - certbot_conf:/etc/nginx/ssl/:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - django_app
+    networks:
+      - ovozpay_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Certbot for SSL certificates
+  certbot:
+    image: certbot/certbot:latest
+    container_name: ovozpay_certbot
+    volumes:
+      - certbot_www:/var/www/certbot/:rw
+      - certbot_conf:/etc/letsencrypt/:rw
+    networks:
+      - ovozpay_network
+
+  # Monitoring with Flower (Celery monitoring)
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ovozpay_flower
+    restart: unless-stopped
+    command: celery -A config flower --port=5555
+    environment:
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass123}@redis:6379/0
+      - FLOWER_BASIC_AUTH=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-admin123}
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery_worker
+    networks:
+      - ovozpay_network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  static_volume:
+    driver: local
+  media_volume:
+    driver: local
+  ocr_temp:
+    driver: local
+  whisper_models:
+    driver: local
+  whisper_temp:
+    driver: local
+  certbot_www:
+    driver: local
+  certbot_conf:
+    driver: local
+
+networks:
+  ovozpay_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 

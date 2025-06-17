@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from datetime import timedelta
 
 load_dotenv()
 
@@ -41,13 +40,12 @@ INSTALLED_APPS = [
     
     # Third party apps
     'rest_framework',
-    'rest_framework_simplejwt',
     'corsheaders',
     'drf_yasg',
     'django_filters',
     'ckeditor',
     'jazzmin',
-    # 'modeltranslation',  # Временно отключено
+    # 'modeltranslation',  # Temporarily disabled due to import error
     
     # Local apps
     'apps.core.apps.CoreConfig',
@@ -55,12 +53,13 @@ INSTALLED_APPS = [
     'apps.transactions.apps.TransactionsConfig',
     'apps.categories.apps.CategoriesConfig',
     'apps.goals.apps.GoalsConfig',
-    'apps.reminders.apps.RemindersConfig',
     'apps.analytics.apps.AnalyticsConfig',
     'apps.sources.apps.SourcesConfig',
     'apps.broadcast.apps.BroadcastConfig',
     'apps.settings.apps.SettingsConfig',
     'apps.bot.apps.BotConfig',
+    'apps.reminders.apps.RemindersConfig',
+    'apps.ai.apps.AiConfig',
 ]
 
 MIDDLEWARE = [
@@ -171,7 +170,6 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ],
@@ -183,24 +181,6 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
-}
-
-# JWT settings
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
-    'VERIFYING_KEY': None,
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
 # CORS settings
@@ -262,6 +242,7 @@ PAYME_LOGIN = os.environ.get('PAYME_LOGIN', '')
 PAYME_PASSWORD = os.environ.get('PAYME_PASSWORD', '')
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', BOT_TOKEN)
 
 # Настройки Jazzmin
 JAZZMIN_SETTINGS = {
@@ -375,10 +356,6 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'SuvAgroMash <muxammad
 
 # Email для получения заявок
 CONSULTATION_EMAIL = os.environ.get('CONSULTATION_EMAIL', 'suvagromash@gmail.com')
-
-# Telegram Bot settings
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '8115661165:AAHWkrF_VVfppRcGjxu5ATlt0uOs5qWLJSw')
-TELEGRAM_WEBHOOK_URL = os.getenv('TELEGRAM_WEBHOOK_URL', 'https://your-domain.com/telegram/webhook/')
 
 try:
     from .settings_dev import *

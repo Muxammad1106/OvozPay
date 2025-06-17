@@ -29,6 +29,10 @@ class User(BaseModel):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     phone_number = models.CharField(max_length=20, unique=True, verbose_name='Номер телефона')
+    telegram_id = models.BigIntegerField(unique=True, null=True, blank=True, verbose_name='Telegram ID')
+    username = models.CharField(max_length=150, blank=True, verbose_name='Имя пользователя')
+    first_name = models.CharField(max_length=150, blank=True, verbose_name='Имя')
+    last_name = models.CharField(max_length=150, blank=True, verbose_name='Фамилия')
     language = models.CharField(
         max_length=2, 
         choices=LANGUAGE_CHOICES, 
@@ -57,7 +61,7 @@ class User(BaseModel):
         verbose_name_plural = 'Пользователи'
     
     def __str__(self):
-        return self.phone_number
+        return self.username or self.phone_number or f"User {self.id}"
     
     def save(self, *args, **kwargs):
         """Создаем настройки пользователя после создания"""

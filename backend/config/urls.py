@@ -41,6 +41,7 @@ urlpatterns = [
     path('api/sources/', include('apps.sources.urls')),
     path('api/broadcast/', include('apps.broadcast.urls')),
     path('api/bot/', include('apps.bot.urls')),
+    path('api/ai/', include('apps.ai.urls')),
 ]
 
 if settings.DEBUG:
