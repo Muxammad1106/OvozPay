@@ -56,8 +56,7 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD:-redispass123}@redis:6379/0
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,ovozpay.uz}
-      - OCR_SERVICE_URL=http://tesseract_ocr:8001
-      - WHISPER_SERVICE_URL=http://whisper_voice:8002
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
@@ -89,8 +88,7 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ovozpay}:${POSTGRES_PASSWORD:-supersecurepass123}@postgres:5432/${POSTGRES_DB:-ovozpay_db}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-redispass123}@redis:6379/0
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - OCR_SERVICE_URL=http://tesseract_ocr:8001
-      - WHISPER_SERVICE_URL=http://whisper_voice:8002
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
     volumes:
       - media_volume:/app/media
       - ./backend/logs:/app/logs
@@ -121,44 +119,7 @@ services:
     networks:
       - ovozpay_network
 
-  # Tesseract OCR Service
-  tesseract_ocr:
-    build:
-      context: ./docker/tesseract
-      dockerfile: Dockerfile
-    container_name: ovozpay_tesseract
-    restart: unless-stopped
-    ports:
-      - "8001:8001"
-    volumes:
-      - ocr_temp:/tmp/ocr
-    networks:
-      - ovozpay_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Whisper Voice Recognition Service
-  whisper_voice:
-    build:
-      context: ./docker/whisper
-      dockerfile: Dockerfile
-    container_name: ovozpay_whisper
-    restart: unless-stopped
-    ports:
-      - "8002:8002"
-    volumes:
-      - whisper_models:/app/models
-      - whisper_temp:/tmp/whisper
-    networks:
-      - ovozpay_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # AI сервисы заменены на DeepSeek API - экономия ~20GB дискового пространства!
 
   # Telegram Bot (separate service)
   telegram_bot:
@@ -174,15 +135,12 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ovozpay}:${POSTGRES_PASSWORD:-supersecurepass123}@postgres:5432/${POSTGRES_DB:-ovozpay_db}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-redispass123}@redis:6379/0
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - OCR_SERVICE_URL=http://tesseract_ocr:8001
-      - WHISPER_SERVICE_URL=http://whisper_voice:8002
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
     volumes:
       - media_volume:/app/media
       - ./backend/logs:/app/logs
     depends_on:
       - django_app
-      - tesseract_ocr
-      - whisper_voice
     networks:
       - ovozpay_network
 
@@ -250,12 +208,6 @@ volumes:
   static_volume:
     driver: local
   media_volume:
-    driver: local
-  ocr_temp:
-    driver: local
-  whisper_models:
-    driver: local
-  whisper_temp:
     driver: local
   certbot_www:
     driver: local

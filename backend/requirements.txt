@@ -1,4 +1,4 @@
-# OvozPay - Полные зависимости проекта
+# OvozPay - Оптимизированные зависимости с DeepSeek API
 # Основные Django зависимости
 Django==5.0.3
 djangorestframework==3.15.0
@@ -35,50 +35,15 @@ python-telegram-bot==13.15
 aiohttp==3.9.1
 requests==2.31.0
 
-# AI и машинное обучение
-# OCR - распознавание текста
-pytesseract>=0.3.10
+# Работа с изображениями (только для базовой обработки)
 Pillow>=10.2.0
-opencv-python>=4.8.0
 
-# Аудио обработка для голосового распознавания
+# Аудио файлы (только для базовой обработки)
 pydub>=0.25.1
-librosa>=0.10.0
-soundfile>=0.12.1
-ffmpeg-python>=0.2.0
 
-# NLP и обработка текста
-nltk>=3.8.1
-textdistance>=4.6.0
-langdetect>=1.0.9
-
-# Научные вычисления
-numpy>=1.24.0
-scipy>=1.11.0
-
-# Дополнительные библиотеки для изображений
-scikit-image>=0.21.0
-matplotlib>=3.7.0
-
-# Whisper для распознавания речи
-openai-whisper==20240930
-torch==2.7.1
-numba==0.61.2
-llvmlite==0.44.0
-
-# OpenCV для обработки изображений (OCR)
-opencv-python==4.10.0.84
-Pillow==10.4.0
-tiktoken==0.9.0
-regex==2024.11.6
-more-itertools==10.7.0
-mpmath==1.3.0
-sympy==1.14.0
-networkx==3.5
-filelock==3.18.0
-fsspec==2025.5.1
-jinja2==3.1.6
-MarkupSafe==3.0.2
+# HTTP клиенты для API
+httpx>=0.27.0
+openai>=1.0.0
 
 # Дополнительные полезные библиотеки
 python-dateutil>=2.8.2
@@ -87,3 +52,12 @@ redis>=5.0.0
 
 # Production WSGI сервер
 gunicorn==21.2.0
+
+# Celery Beat для периодических задач
+django-celery-beat==2.5.0
+
+# Flower для мониторинга Celery
+flower==2.0.1
+
+# Файловая обработка
+python-magic>=0.4.27

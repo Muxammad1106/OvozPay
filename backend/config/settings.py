@@ -357,6 +357,40 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'SuvAgroMash <muxammad
 # Email для получения заявок
 CONSULTATION_EMAIL = os.environ.get('CONSULTATION_EMAIL', 'suvagromash@gmail.com')
 
+# DeepSeek AI API Settings (заменяет Whisper и OCR)
+DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
+DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1'
+
+# Логирование для AI сервисов
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'services.deepseek_ai': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+
 try:
     from .settings_dev import *
 except ImportError:
