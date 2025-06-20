@@ -1,23 +1,5 @@
-"""
-Сериализаторы для модуля целей и накоплений
-"""
+# goals serializers
 
-from .goal_serializers import (
-    GoalSerializer,
-    GoalTransactionSerializer,
-    GoalCreateSerializer,
-    GoalProgressSerializer,
-    GoalStatsSerializer,
-    GoalCompleteSerializer,
-    GoalStatusUpdateSerializer
-)
+from .goal_serializer import GoalSerializer
 
-__all__ = [
-    'GoalSerializer',
-    'GoalTransactionSerializer', 
-    'GoalCreateSerializer',
-    'GoalProgressSerializer',
-    'GoalStatsSerializer',
-    'GoalCompleteSerializer',
-    'GoalStatusUpdateSerializer'
-]
+__all__ = ['GoalSerializer']

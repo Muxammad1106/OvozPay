@@ -1,3 +1,3 @@
-from .transaction_views import TransactionViewSet, DebtTransactionViewSet
+from .transaction_views import TransactionViewSet, DebtViewSet
 
-__all__ = ['TransactionViewSet', 'DebtTransactionViewSet']
+__all__ = ['TransactionViewSet', 'DebtViewSet']

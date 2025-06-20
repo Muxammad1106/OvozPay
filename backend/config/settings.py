@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'django_filters',
     'ckeditor',
     'jazzmin',
-    # 'modeltranslation',  # Temporarily disabled due to import error
+    # 'modeltranslation',  # Временно отключено
     
     # Local apps
     'apps.core.apps.CoreConfig',
@@ -58,8 +58,6 @@ INSTALLED_APPS = [
     'apps.broadcast.apps.BroadcastConfig',
     'apps.settings.apps.SettingsConfig',
     'apps.bot.apps.BotConfig',
-    'apps.reminders.apps.RemindersConfig',
-    'apps.ai.apps.AiConfig',
 ]
 
 MIDDLEWARE = [
@@ -242,7 +240,6 @@ PAYME_LOGIN = os.environ.get('PAYME_LOGIN', '')
 PAYME_PASSWORD = os.environ.get('PAYME_PASSWORD', '')
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
-TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', BOT_TOKEN)
 
 # Настройки Jazzmin
 JAZZMIN_SETTINGS = {
@@ -356,40 +353,6 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'SuvAgroMash <muxammad
 
 # Email для получения заявок
 CONSULTATION_EMAIL = os.environ.get('CONSULTATION_EMAIL', 'suvagromash@gmail.com')
-
-# DeepSeek AI API Settings (заменяет Whisper и OCR)
-DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
-DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1'
-
-# Логирование для AI сервисов
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
-            'formatter': 'verbose',
-        },
-    },
-    'loggers': {
-        'services.deepseek_ai': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-    },
-}
 
 try:
     from .settings_dev import *
