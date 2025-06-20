@@ -168,6 +168,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ],
@@ -353,6 +354,32 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'SuvAgroMash <muxammad
 
 # Email для получения заявок
 CONSULTATION_EMAIL = os.environ.get('CONSULTATION_EMAIL', 'suvagromash@gmail.com')
+
+# Simple JWT настройки
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+}
+
+# Telegram Bot настройки
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '8115661165:AAHWkrF_VVfppRcGjxu5ATlt0uOs5qWLJSw')
+TELEGRAM_WEBHOOK_URL = os.environ.get('TELEGRAM_WEBHOOK_URL', 'https://your-domain.com/telegram/webhook/')
 
 try:
     from .settings_dev import *

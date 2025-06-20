@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from apps.bot.telegram.webhook_view import TelegramWebhookView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -32,6 +33,9 @@ urlpatterns = [
     path('api/sources/', include('apps.sources.urls')),
     path('api/broadcast/', include('apps.broadcast.urls')),
     path('api/bot/', include('apps.bot.urls')),
+    
+    # Telegram Webhook
+    path('telegram/webhook/', TelegramWebhookView.as_view(), name='telegram_webhook'),
 ]
 
 if settings.DEBUG:
