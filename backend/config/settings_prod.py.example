@@ -1,25 +1,120 @@
 from .settings import *
 
 DEBUG = False
-SMS_CODE_ACTIVE = False
-ESKIZ_TOKEN = ""
-ALLOWED_HOSTS = ('api.DOMAIN.uz', )
-CORS_ORIGIN_WHITELIST = ('', )
-FRONTEND_DOMAIN = 'https://bukhara-flour.uz'
+SMS_CODE_ACTIVE = True
+ESKIZ_TOKEN = "your_eskiz_token"
+ALLOWED_HOSTS = ('api.yourdomain.com', 'yourdomain.com')
+CORS_ORIGIN_WHITELIST = ('https://yourdomain.com', )
+FRONTEND_DOMAIN = 'https://yourdomain.com'
 
-PAYME_LOGIN = 'Paycom'
-PAYME_PASSWORD = 'hxkgSChRGD2SW91N%JtOWJoRt6g3SiX1fX?V'
-
+# Database настройки для production
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': '',
-        'USER': '',
-        'PASSWORD': '',
+        'NAME': 'ovozpay_prod',
+        'USER': 'ovozpay_user',
+        'PASSWORD': 'your_strong_password',
         'HOST': 'localhost',
         'PORT': 5432,
     }
 }
 
-STATIC_ROOT = 'static'
-MEDIA_ROOT = 'files/uploads'
+# Telegram Bot настройки для production
+TELEGRAM_BOT_TOKEN = "your_production_bot_token"
+TELEGRAM_WEBHOOK_URL = "https://api.yourdomain.com/telegram/webhook/"
+
+# AI Services настройки для production
+OPENAI_API_KEY = "your_production_openai_api_key"
+DEEPSEEK_API_KEY = "your_production_deepseek_api_key"
+
+# External APIs
+CBU_API_URL = "https://cbu.uz/uz/arkhiv-kursov-valyut/json/"
+
+# Production пути для AI моделей и медиа
+AI_MODELS_PATH = "/var/www/ovozpay/ai_models/"
+VOICE_UPLOADS_PATH = "/var/www/ovozpay/media/voice/"
+IMAGE_UPLOADS_PATH = "/var/www/ovozpay/media/images/"
+
+# PayMe настройки для production
+PAYME_LOGIN = 'Paycom'
+PAYME_PASSWORD = 'your_production_payme_password'
+
+# Статические файлы для production
+STATIC_ROOT = '/var/www/ovozpay/static'
+MEDIA_ROOT = '/var/www/ovozpay/media'
+
+# Email настройки для production
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'noreply@yourdomain.com'
+EMAIL_HOST_PASSWORD = 'your_production_email_password'
+DEFAULT_FROM_EMAIL = 'OvozPay <noreply@yourdomain.com>'
+
+# Настройки логирования для production
+import logging
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': '/var/log/ovozpay/bot.log',
+            'maxBytes': 15728640,  # 15MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': '/var/log/ovozpay/error.log',
+            'maxBytes': 15728640,  # 15MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+            'level': 'ERROR',
+        },
+    },
+    'loggers': {
+        'apps.bot': {
+            'handlers': ['file', 'error_file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'services.ai': {
+            'handlers': ['file', 'error_file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django': {
+            'handlers': ['file', 'error_file'],
+            'level': 'WARNING',
+            'propagate': True,
+        },
+    },
+}
+
+# Security настройки для production
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_HSTS_SECONDS = 3600
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Кэширование для production (опционально)
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+#         'LOCATION': 'redis://127.0.0.1:6379/1',
+#     }
+# }

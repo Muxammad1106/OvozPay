@@ -1,18 +1,156 @@
+"""
+Модели для Telegram бота OvozPay
+"""
+
 from django.db import models
 import uuid
 from django.utils import timezone
-from apps.core.models import BaseModel
 
-# Create your models here.
 
-class VoiceCommandLog(BaseModel):
-    """Лог голосовых команд пользователей"""
+class BaseModel(models.Model):
+    """Базовая модель с общими полями"""
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+    
+    class Meta:
+        abstract = True
+
+
+class TelegramUser(BaseModel):
+    """Пользователь Telegram бота"""
+    
+    LANGUAGE_CHOICES = [
+        ('ru', 'Русский'),
+        ('en', 'English'),
+        ('uz', 'O\'zbekcha'),
+    ]
+    
+    CURRENCY_CHOICES = [
+        ('UZS', 'Узбекский сум'),
+        ('USD', 'Доллар США'),
+        ('EUR', 'Евро'),
+        ('RUB', 'Российский рубль'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    telegram_user_id = models.BigIntegerField(unique=True, verbose_name='Telegram User ID')
+    telegram_chat_id = models.BigIntegerField(unique=True, verbose_name='Telegram Chat ID')
+    username = models.CharField(max_length=255, blank=True, verbose_name='Username')
+    first_name = models.CharField(max_length=255, blank=True, verbose_name='Имя')
+    last_name = models.CharField(max_length=255, blank=True, verbose_name='Фамилия')
+    phone_number = models.CharField(max_length=20, blank=True, verbose_name='Номер телефона')
+    
+    language = models.CharField(
+        max_length=5,
+        choices=LANGUAGE_CHOICES,
+        default='ru',
+        verbose_name='Язык интерфейса'
+    )
+    preferred_currency = models.CharField(
+        max_length=3,
+        choices=CURRENCY_CHOICES,
+        default='UZS',
+        verbose_name='Предпочитаемая валюта'
+    )
+    
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+    is_blocked = models.BooleanField(default=False, verbose_name='Заблокирован')
+    
+    class Meta:
+        ordering = ('-created_at',)
+        verbose_name = 'Пользователь Telegram'
+        verbose_name_plural = 'Пользователи Telegram'
+        indexes = [
+            models.Index(fields=['telegram_chat_id']),
+            models.Index(fields=['telegram_user_id']),
+            models.Index(fields=['is_active']),
+        ]
+    
+    def __str__(self):
+        name = self.first_name or self.username or str(self.telegram_chat_id)
+        return f"{name} ({self.get_language_display()})"
+    
+    @property
+    def full_name(self):
+        """Возвращает полное имя"""
+        parts = [self.first_name, self.last_name]
+        return ' '.join(part for part in parts if part)
+    
+    @property
+    def display_name(self):
+        """Возвращает отображаемое имя"""
+        return self.full_name or self.username or f"User {self.telegram_chat_id}"
+
+
+class BotSession(BaseModel):
+    """Сессия пользователя в боте"""
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(TelegramUser, on_delete=models.CASCADE, related_name='sessions')
+    state = models.CharField(max_length=50, blank=True, null=True, verbose_name='Состояние')
+    context_data = models.JSONField(default=dict, blank=True, verbose_name='Контекстные данные')
+    is_active = models.BooleanField(default=True, verbose_name='Активна')
+    last_activity = models.DateTimeField(auto_now=True, verbose_name='Последняя активность')
+    
+    class Meta:
+        ordering = ('-last_activity',)
+        verbose_name = 'Сессия бота'
+        verbose_name_plural = 'Сессии бота'
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+            models.Index(fields=['state']),
+        ]
+    
+    def __str__(self):
+        return f"Сессия {self.user.display_name} ({self.state or 'default'})"
+
+
+class MessageLog(BaseModel):
+    """Лог сообщений"""
+    
+    MESSAGE_TYPE_CHOICES = [
+        ('text', 'Текст'),
+        ('voice', 'Голос'),
+        ('photo', 'Фото'),
+        ('command', 'Команда'),
+        ('callback', 'Callback'),
+    ]
+    
+    DIRECTION_CHOICES = [
+        ('incoming', 'Входящее'),
+        ('outgoing', 'Исходящее'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(TelegramUser, on_delete=models.CASCADE, related_name='message_logs')
+    message_type = models.CharField(max_length=10, choices=MESSAGE_TYPE_CHOICES, verbose_name='Тип сообщения')
+    direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, verbose_name='Направление')
+    content = models.TextField(verbose_name='Содержимое')
+    telegram_message_id = models.BigIntegerField(null=True, blank=True, verbose_name='ID сообщения в Telegram')
+    processing_time = models.FloatField(null=True, blank=True, verbose_name='Время обработки (сек)')
+    success = models.BooleanField(default=True, verbose_name='Успешно')
+    error_message = models.TextField(blank=True, verbose_name='Сообщение об ошибке')
+    
+    class Meta:
+        ordering = ('-created_at',)
+        verbose_name = 'Лог сообщения'
+        verbose_name_plural = 'Логи сообщений'
+        indexes = [
+            models.Index(fields=['user', 'message_type']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_message_type_display()} от {self.user.display_name}"
+
+
+class VoiceCommand(BaseModel):
+    """Голосовые команды пользователей"""
     
     COMMAND_TYPE_CHOICES = [
         ('expense', 'Расход'),
         ('income', 'Доход'),
-        ('goal', 'Цель'),
-        ('debt', 'Долг'),
         ('query', 'Запрос'),
         ('unknown', 'Неизвестно'),
     ]
@@ -21,17 +159,13 @@ class VoiceCommandLog(BaseModel):
         ('processing', 'Обрабатывается'),
         ('success', 'Успешно'),
         ('failed', 'Ошибка'),
-        ('partial', 'Частично выполнено'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='voice_commands')
-    text = models.TextField(verbose_name='Распознанный текст')
-    original_audio_duration = models.FloatField(
-        null=True, 
-        blank=True,
-        verbose_name='Длительность аудио (сек)'
-    )
+    user = models.ForeignKey(TelegramUser, on_delete=models.CASCADE, related_name='voice_commands')
+    telegram_file_id = models.CharField(max_length=255, verbose_name='Telegram File ID')
+    transcription = models.TextField(blank=True, verbose_name='Распознанный текст')
+    duration_seconds = models.PositiveIntegerField(verbose_name='Длительность (сек)')
     command_type = models.CharField(
         max_length=10,
         choices=COMMAND_TYPE_CHOICES,
@@ -44,17 +178,6 @@ class VoiceCommandLog(BaseModel):
         default='processing',
         verbose_name='Статус обработки'
     )
-    confidence_score = models.FloatField(
-        null=True,
-        blank=True,
-        verbose_name='Уверенность распознавания (0-1)'
-    )
-    processing_time = models.FloatField(
-        null=True,
-        blank=True,
-        verbose_name='Время обработки (сек)'
-    )
-    error_message = models.TextField(blank=True, verbose_name='Сообщение об ошибке')
     extracted_amount = models.DecimalField(
         max_digits=15,
         decimal_places=2,
@@ -62,195 +185,125 @@ class VoiceCommandLog(BaseModel):
         blank=True,
         verbose_name='Извлеченная сумма'
     )
-    extracted_currency = models.CharField(
-        max_length=3,
+    processing_time = models.FloatField(
+        null=True,
         blank=True,
-        verbose_name='Извлеченная валюта'
+        verbose_name='Время обработки (сек)'
     )
+    error_message = models.TextField(blank=True, verbose_name='Сообщение об ошибке')
     created_transaction_id = models.UUIDField(
         null=True,
         blank=True,
         verbose_name='ID созданной транзакции'
     )
-    received_at = models.DateTimeField(default=timezone.now, verbose_name='Время получения')
     
     class Meta:
-        ordering = ('-received_at',)
-        verbose_name = 'Лог голосовой команды'
-        verbose_name_plural = 'Логи голосовых команд'
+        ordering = ('-created_at',)
+        verbose_name = 'Голосовая команда'
+        verbose_name_plural = 'Голосовые команды'
         indexes = [
-            models.Index(fields=['user', 'command_type']),
-            models.Index(fields=['status']),
-            models.Index(fields=['received_at']),
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['command_type']),
         ]
     
     def __str__(self):
-        return f"Команда {self.user.phone_number}: {self.text[:50]}..."
-    
-    def mark_as_success(self, transaction_id=None):
-        """Помечает команду как успешно выполненную"""
-        self.status = 'success'
-        if transaction_id:
-            self.created_transaction_id = transaction_id
-        self.save()
-    
-    def mark_as_failed(self, error_message):
-        """Помечает команду как неудачную"""
-        self.status = 'failed'
-        self.error_message = error_message
-        self.save()
-    
-    def set_processing_time(self, start_time):
-        """Устанавливает время обработки"""
-        self.processing_time = (timezone.now() - start_time).total_seconds()
-        self.save()
+        return f"Голосовая команда {self.user.display_name}: {self.transcription[:50]}..."
     
     @classmethod
     def get_user_stats(cls, user, days=30):
-        """Возвращает статистику голосовых команд пользователя"""
+        """Получает статистику голосовых команд пользователя за указанный период"""
+        from django.utils import timezone
         from datetime import timedelta
         
-        cutoff_date = timezone.now() - timedelta(days=days)
-        commands = cls.objects.filter(user=user, received_at__gte=cutoff_date)
+        start_date = timezone.now() - timedelta(days=days)
+        commands = cls.objects.filter(user=user, created_at__gte=start_date)
+        
+        total_commands = commands.count()
+        successful_commands = commands.filter(status='success').count()
+        failed_commands = commands.filter(status='failed').count()
         
         return {
-            'total_commands': commands.count(),
-            'successful_commands': commands.filter(status='success').count(),
-            'failed_commands': commands.filter(status='failed').count(),
-            'avg_processing_time': commands.exclude(
-                processing_time=None
-            ).aggregate(
-                avg_time=models.Avg('processing_time')
-            )['avg_time'] or 0,
-            'command_types': commands.values('command_type').annotate(
-                count=models.Count('id')
-            ),
+            'total_commands': total_commands,
+            'successful_commands': successful_commands,
+            'failed_commands': failed_commands,
+            'success_rate': successful_commands / total_commands if total_commands > 0 else 0,
+            'period_days': days
         }
 
 
-class BotSession(BaseModel):
-    """Сессия взаимодействия пользователя с ботом"""
+class PhotoReceipt(BaseModel):
+    """Фотографии чеков"""
     
-    SESSION_TYPE_CHOICES = [
-        ('voice', 'Голосовая'),
-        ('text', 'Текстовая'),
-        ('mixed', 'Смешанная'),
+    STATUS_CHOICES = [
+        ('processing', 'Обрабатывается'),
+        ('success', 'Успешно'),
+        ('failed', 'Ошибка'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='bot_sessions')
-    telegram_chat_id = models.BigIntegerField(verbose_name='ID чата в Telegram')
-    session_type = models.CharField(
+    user = models.ForeignKey(TelegramUser, on_delete=models.CASCADE, related_name='photo_receipts')
+    telegram_file_id = models.CharField(max_length=255, verbose_name='Telegram File ID')
+    file_size_bytes = models.PositiveIntegerField(verbose_name='Размер файла (байт)')
+    extracted_text = models.TextField(blank=True, verbose_name='Извлечённый текст')
+    items_count = models.PositiveIntegerField(default=0, verbose_name='Количество товаров')
+    total_amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='Общая сумма'
+    )
+    status = models.CharField(
         max_length=10,
-        choices=SESSION_TYPE_CHOICES,
-        default='mixed',
-        verbose_name='Тип сессии'
+        choices=STATUS_CHOICES,
+        default='processing',
+        verbose_name='Статус обработки'
     )
-    is_active = models.BooleanField(default=True, verbose_name='Активна')
-    started_at = models.DateTimeField(default=timezone.now, verbose_name='Начало сессии')
-    ended_at = models.DateTimeField(
-        null=True, 
-        blank=True, 
-        verbose_name='Конец сессии'
+    processing_time = models.FloatField(
+        null=True,
+        blank=True,
+        verbose_name='Время обработки (сек)'
     )
-    messages_count = models.PositiveIntegerField(default=0, verbose_name='Количество сообщений')
-    voice_messages_count = models.PositiveIntegerField(default=0, verbose_name='Голосовых сообщений')
-    commands_executed = models.PositiveIntegerField(default=0, verbose_name='Выполнено команд')
-    last_activity_at = models.DateTimeField(
-        default=timezone.now,
-        verbose_name='Последняя активность'
-    )
+    error_message = models.TextField(blank=True, verbose_name='Сообщение об ошибке')
     
     class Meta:
-        ordering = ('-started_at',)
-        verbose_name = 'Сессия бота'
-        verbose_name_plural = 'Сессии бота'
+        ordering = ('-created_at',)
+        verbose_name = 'Фото чека'
+        verbose_name_plural = 'Фото чеков'
         indexes = [
-            models.Index(fields=['user', 'is_active']),
-            models.Index(fields=['telegram_chat_id']),
-            models.Index(fields=['last_activity_at']),
+            models.Index(fields=['user', 'status']),
         ]
     
     def __str__(self):
-        status = "Активна" if self.is_active else "Завершена"
-        return f"Сессия {self.user.phone_number} ({status})"
+        return f"Фото чека {self.user.display_name}: {self.items_count} товаров"
+
+
+class BotStatistics(BaseModel):
+    """Статистика использования бота"""
     
-    @property
-    def duration(self):
-        """Возвращает длительность сессии"""
-        end_time = self.ended_at or timezone.now()
-        return end_time - self.started_at
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    date = models.DateField(unique=True, verbose_name='Дата')
+    total_users = models.PositiveIntegerField(default=0, verbose_name='Всего пользователей')
+    active_users = models.PositiveIntegerField(default=0, verbose_name='Активных пользователей')
+    new_users = models.PositiveIntegerField(default=0, verbose_name='Новых пользователей')
+    total_messages = models.PositiveIntegerField(default=0, verbose_name='Всего сообщений')
+    voice_messages = models.PositiveIntegerField(default=0, verbose_name='Голосовых сообщений')
+    photo_messages = models.PositiveIntegerField(default=0, verbose_name='Фото сообщений')
+    successful_commands = models.PositiveIntegerField(default=0, verbose_name='Успешных команд')
+    failed_commands = models.PositiveIntegerField(default=0, verbose_name='Неудачных команд')
     
-    @property
-    def duration_minutes(self):
-        """Возвращает длительность сессии в минутах"""
-        return self.duration.total_seconds() / 60
+    # Статистика по языкам
+    users_ru = models.PositiveIntegerField(default=0, verbose_name='Пользователей (русский)')
+    users_en = models.PositiveIntegerField(default=0, verbose_name='Пользователей (английский)')
+    users_uz = models.PositiveIntegerField(default=0, verbose_name='Пользователей (узбекский)')
     
-    def update_activity(self):
-        """Обновляет время последней активности"""
-        self.last_activity_at = timezone.now()
-        self.save(update_fields=['last_activity_at'])
+    class Meta:
+        ordering = ('-date',)
+        verbose_name = 'Статистика бота'
+        verbose_name_plural = 'Статистика бота'
+        indexes = [
+            models.Index(fields=['date']),
+        ]
     
-    def add_message(self, is_voice=False):
-        """Добавляет сообщение к счетчику"""
-        self.messages_count += 1
-        if is_voice:
-            self.voice_messages_count += 1
-        self.update_activity()
-        self.save(update_fields=['messages_count', 'voice_messages_count'])
-    
-    def add_command(self):
-        """Добавляет выполненную команду к счетчику"""
-        self.commands_executed += 1
-        self.update_activity()
-        self.save(update_fields=['commands_executed'])
-    
-    def end_session(self):
-        """Завершает сессию"""
-        self.is_active = False
-        self.ended_at = timezone.now()
-        self.save()
-    
-    @classmethod
-    def get_or_create_active_session(cls, user, telegram_chat_id):
-        """Получает или создает активную сессию для пользователя"""
-        # Сначала пытаемся найти активную сессию
-        active_session = cls.objects.filter(
-            user=user,
-            telegram_chat_id=telegram_chat_id,
-            is_active=True
-        ).first()
-        
-        if active_session:
-            # Проверяем, не слишком ли старая сессия (больше 24 часов)
-            if active_session.duration.total_seconds() > 24 * 3600:
-                active_session.end_session()
-                active_session = None
-        
-        # Создаем новую сессию, если нет активной
-        if not active_session:
-            active_session = cls.objects.create(
-                user=user,
-                telegram_chat_id=telegram_chat_id
-            )
-        
-        return active_session
-    
-    @classmethod
-    def end_inactive_sessions(cls, hours=24):
-        """Завершает неактивные сессии старше указанного времени"""
-        from datetime import timedelta
-        
-        cutoff_time = timezone.now() - timedelta(hours=hours)
-        inactive_sessions = cls.objects.filter(
-            is_active=True,
-            last_activity_at__lt=cutoff_time
-        )
-        
-        count = inactive_sessions.count()
-        inactive_sessions.update(
-            is_active=False,
-            ended_at=timezone.now()
-        )
-        
-        return count
+    def __str__(self):
+        return f"Статистика {self.date}: {self.active_users} активных пользователей"

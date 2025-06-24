@@ -377,9 +377,21 @@ SIMPLE_JWT = {
     'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
-# Telegram Bot настройки
-TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '8115661165:AAHWkrF_VVfppRcGjxu5ATlt0uOs5qWLJSw')
-TELEGRAM_WEBHOOK_URL = os.environ.get('TELEGRAM_WEBHOOK_URL', 'https://your-domain.com/telegram/webhook/')
+# Telegram Bot настройки (переопределяются в settings_dev.py или settings_prod.py)
+TELEGRAM_BOT_TOKEN = ''
+TELEGRAM_WEBHOOK_URL = ''
+
+# AI Services настройки (переопределяются в settings_dev.py или settings_prod.py)
+OPENAI_API_KEY = ''
+DEEPSEEK_API_KEY = ''
+
+# External APIs
+CBU_API_URL = 'https://cbu.uz/uz/arkhiv-kursov-valyut/json/'
+
+# Пути для AI моделей и медиа
+AI_MODELS_PATH = 'ai_models/'
+VOICE_UPLOADS_PATH = 'media/voice/'
+IMAGE_UPLOADS_PATH = 'media/images/'
 
 try:
     from .settings_dev import *

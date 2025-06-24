@@ -5,43 +5,85 @@ ESKIZ_TOKEN = ""
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'onetv',
-        'USER': 'onetv',
-        'PASSWORD': 'onetv',
+        'NAME': 'ovozpay',
+        'USER': 'your_username',
+        'PASSWORD': 'your_password',
         'HOST': 'localhost',
         'PORT': 5432,
     }
 }
 
+# Telegram Bot настройки
+TELEGRAM_BOT_TOKEN = "your_bot_token_from_botfather"
+TELEGRAM_WEBHOOK_URL = "https://yourdomain.com/telegram/webhook/"
+
+# AI Services настройки
+OPENAI_API_KEY = "your_openai_api_key_here"
+DEEPSEEK_API_KEY = "your_deepseek_api_key_here"
+
+# External APIs
+CBU_API_URL = "https://cbu.uz/uz/arkhiv-kursov-valyut/json/"
+
+# Локальные пути для AI моделей и медиа
+AI_MODELS_PATH = "ai_models/"
+VOICE_UPLOADS_PATH = "media/voice/"
+IMAGE_UPLOADS_PATH = "media/images/"
+
+# Email настройки для разработки
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
-EMAIL_HOST_USER = ''
-EMAIL_HOST_PASSWORD = ''
+EMAIL_HOST_USER = 'your_email@gmail.com'
+EMAIL_HOST_PASSWORD = 'your_app_password'
 SERVER_EMAIL = EMAIL_HOST_USER
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
+# PayMe настройки для разработки
 PAYME_LOGIN = 'Paycom'
-PAYME_PASSWORD = 'hxkgSChRGD2SW91N%JtOWJoRt6g3SiX1fX?V'
+PAYME_PASSWORD = 'test_password'
 
-# For logging queries
-# LOGGING = {
-#     'version': 1,
-#     'filters': {
-#         'require_debug_true': {
-#             '()': 'django.utils.log.RequireDebugTrue',
-#         }
-#     },
-#     'handlers': {
-#         'console': {
-#             'level': 'DEBUG',
-#             'filters': ['require_debug_true'],
-#             'class': 'logging.StreamHandler',
-#         }
-#     },
-#     'loggers': {
-#         'django.db.backends': {
-#             'level': 'DEBUG',
-#             'handlers': ['console'],
-#         }
-#     }
+# Настройки логирования для разработки
+import logging
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'bot_debug.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'apps.bot': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'services.ai': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+
+# Для логирования SQL запросов (опционально)
+# LOGGING['loggers']['django.db.backends'] = {
+#     'level': 'DEBUG',
+#     'handlers': ['console'],
 # }

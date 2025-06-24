@@ -1,1 +1,0 @@
-# Management commands для приложения bot 

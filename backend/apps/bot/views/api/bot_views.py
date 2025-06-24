@@ -4,12 +4,12 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
-from apps.bot.models import VoiceCommandLog, BotSession
+from apps.bot.models import VoiceCommand, BotSession
 from apps.bot.serializers import VoiceCommandLogSerializer, BotSessionSerializer
 
 
 class VoiceCommandLogViewSet(viewsets.ModelViewSet):
-    queryset = VoiceCommandLog.objects.select_related('user').all()
+    queryset = VoiceCommand.objects.select_related('user').all()
     serializer_class = VoiceCommandLogSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -29,7 +29,7 @@ class VoiceCommandLogViewSet(viewsets.ModelViewSet):
         try:
             from apps.users.models import User
             user = User.objects.get(id=user_id)
-            stats = VoiceCommandLog.get_user_stats(user, days)
+            stats = VoiceCommand.get_user_stats(user, days)
             return Response(stats)
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=404)
