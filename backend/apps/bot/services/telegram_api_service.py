@@ -61,6 +61,20 @@ class TelegramAPIService:
         
         return await self._make_request('POST', url, data)
     
+    async def delete_message(
+        self, 
+        chat_id: int, 
+        message_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """Удаление сообщения"""
+        url = f"{self.base_url}/deleteMessage"
+        data = {
+            'chat_id': chat_id,
+            'message_id': message_id
+        }
+        
+        return await self._make_request('POST', url, data)
+    
     async def get_file(self, file_id: str) -> Optional[Dict[str, Any]]:
         """Получение информации о файле"""
         url = f"{self.base_url}/getFile"

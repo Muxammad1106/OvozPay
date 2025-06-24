@@ -71,7 +71,7 @@ class VoiceHandlers:
                 chat_id=chat_id,
                 text=processing_text
             )
-            processing_message_id = processing_message.get('result', {}).get('message_id')
+            processing_message_id = processing_message.get('message_id') if processing_message else None
             
             # 1. Скачиваем аудио файл
             audio_file_path = await self._download_voice_file(voice.get('file_id'), chat_id)
@@ -96,7 +96,25 @@ class VoiceHandlers:
                 
                 logger.info(f"Transcribed: '{transcription}' for user {chat_id}")
                 
-                # 3. Парсим транзакцию из текста
+                # 3. Сначала проверяем команды управления
+                from ..services.text_parser_service import TextParserService
+                text_parser = TextParserService()
+                management_data = text_parser.parse_management_command(transcription, language)
+                
+                if management_data:
+                    # Обрабатываем команду управления
+                    voice_log.status = 'success'
+                    voice_log.command_type = management_data['type']
+                    await voice_log.asave()
+                    
+                    success = await self._handle_voice_management_command(
+                        chat_id, management_data, user, processing_message_id
+                    )
+                    
+                    if success:
+                        return
+                
+                # 4. Если не команда управления - парсим транзакцию
                 parsed_data = self.voice_parser.parse_voice_text(transcription, language)
                 
                 if not parsed_data:
@@ -231,6 +249,99 @@ class VoiceHandlers:
             
         except Exception as e:
             logger.error(f"Error sending transaction confirmation: {e}")
+
+    async def _handle_voice_management_command(
+        self, 
+        chat_id: int, 
+        management_data: Dict[str, Any], 
+        user: TelegramUser,
+        processing_message_id: Optional[int] = None
+    ) -> bool:
+        """Обрабатывает голосовые команды управления"""
+        try:
+            command_type = management_data['type']
+            language = user.language
+            
+            if command_type == 'change_language':
+                target_language = management_data['target_language']
+                await self.user_service.update_user_language(chat_id, target_language)
+                
+                confirmations = {
+                    'ru': '✅ Язык изменён на русский',
+                    'en': '✅ Language changed to English', 
+                    'uz': '✅ Til o\'zbekchaga o\'zgartirildi'
+                }
+                
+                confirmation = confirmations.get(target_language, confirmations['ru'])
+                
+            elif command_type == 'change_currency':
+                target_currency = management_data['target_currency']
+                await self.user_service.update_user_currency(chat_id, target_currency)
+                
+                currency_names = {
+                    'USD': {'ru': 'доллары США', 'en': 'US Dollars', 'uz': 'AQSH dollarlari'},
+                    'EUR': {'ru': 'евро', 'en': 'Euro', 'uz': 'Evro'},
+                    'RUB': {'ru': 'российские рубли', 'en': 'Russian Rubles', 'uz': 'Rossiya rublari'},
+                    'UZS': {'ru': 'узбекские сумы', 'en': 'Uzbek Som', 'uz': 'O\'zbek so\'mi'}
+                }
+                
+                currency_name = currency_names.get(target_currency, {}).get(language, target_currency)
+                
+                confirmation = t.get_text('currency_changed', language).format(currency=currency_name)
+                
+            elif command_type == 'create_category':
+                # Импортируем обработчик из basic_handlers
+                from .basic_handlers import BasicHandlers
+                basic_handler = BasicHandlers()
+                
+                await basic_handler._handle_voice_category_creation(
+                    chat_id, management_data['category_name'], user
+                )
+                return True
+                
+            elif command_type == 'delete_category':
+                # Импортируем обработчик из basic_handlers
+                from .basic_handlers import BasicHandlers
+                basic_handler = BasicHandlers()
+                
+                await basic_handler._handle_voice_category_deletion(
+                    chat_id, management_data['category_name'], user
+                )
+                return True
+                
+            elif command_type == 'delete_transaction':
+                # Импортируем обработчик из basic_handlers
+                from .basic_handlers import BasicHandlers
+                basic_handler = BasicHandlers()
+                
+                await basic_handler._handle_voice_transaction_deletion(
+                    chat_id, management_data['target'], user
+                )
+                return True
+            
+            else:
+                return False
+            
+            # Отправляем подтверждение (для команд смены языка/валюты)
+            if processing_message_id:
+                await self.telegram_api.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=processing_message_id,
+                    text=confirmation,
+                    parse_mode='Markdown'
+                )
+            else:
+                await self.telegram_api.send_message(
+                    chat_id=chat_id,
+                    text=confirmation,
+                    parse_mode='Markdown'
+                )
+                
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error handling voice management command: {e}")
+            return False
     
     async def _send_error_message(self, chat_id: int, language: str = 'ru') -> None:
         """

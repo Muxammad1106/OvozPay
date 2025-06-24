@@ -233,15 +233,21 @@ class TransactionService:
             if category:
                 return category
             
-            # Создаем новую категорию
-            category = Category.objects.create(
+            # Создаем новую категорию, используя get_or_create для предотвращения дублирования
+            category, created = Category.objects.get_or_create(
                 user=user,
                 name=category_name.title(),
                 type=transaction_type,
-                is_default=False
+                defaults={
+                    'is_default': False
+                }
             )
             
-            logger.info(f"Создана новая категория: {category.name}")
+            if created:
+                logger.info(f"Создана новая категория: {category.name}")
+            else:
+                logger.info(f"Найдена существующая категория: {category.name}")
+                
             return category
             
         except Exception as e:

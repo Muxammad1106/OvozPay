@@ -86,12 +86,30 @@ class BotTranslations:
             'processing_failed': '❌ Не удалось обработать запрос',
             'feature_not_implemented': '🚧 Функция пока не реализована. Скоро будет доступна!',
             
+            # Статистика
+            'statistics': 'Статистика:',
+            'income': 'Доходы',
+            'expense': 'Расходы', 
+            'transactions': 'Транзакций',
+            'categories_title': 'Ваши категории:',
+            'no_categories': 'У вас пока нет категорий',
+            'create_category_hint': 'Для создания новой категории напишите:\n"создай категорию [название]"',
+            
             # Общие
             'yes': 'Да',
             'no': 'Нет',
             'cancel': 'Отмена',
             'save': 'Сохранить',
             'loading': 'Загрузка...',
+            
+            # Удаление категорий и транзакций
+            'category_created': 'Категория создана',
+            'category_exists': 'Категория уже существует',
+            'category_deleted': 'Категория удалена',
+            'category_not_found': 'Категория не найдена',
+            'transaction_deleted': 'Транзакция удалена',
+            'transaction_not_found': 'Транзакция не найдена',
+            'currency_changed': 'Валюта изменена на {currency}'
         },
         
         'en': {
@@ -169,12 +187,30 @@ class BotTranslations:
             'processing_failed': '❌ Failed to process request',
             'feature_not_implemented': '🚧 Feature not implemented yet. Will be available soon!',
             
+            # Statistics  
+            'statistics': 'Statistics:',
+            'income': 'Income',
+            'expense': 'Expenses',
+            'transactions': 'Transactions',
+            'categories_title': 'Your categories:',
+            'no_categories': 'You have no categories yet',
+            'create_category_hint': 'To create a new category write:\n"create category [name]"',
+            
             # General
             'yes': 'Yes',
             'no': 'No',
             'cancel': 'Cancel',
             'save': 'Save',
             'loading': 'Loading...',
+            
+            # Удаление категорий и транзакций
+            'category_created': 'Category created',
+            'category_exists': 'Category already exists',
+            'category_deleted': 'Category deleted',
+            'category_not_found': 'Category not found',
+            'transaction_deleted': 'Transaction deleted',
+            'transaction_not_found': 'Transaction not found',
+            'currency_changed': 'Currency changed to {currency}'
         },
         
         'uz': {
@@ -252,12 +288,30 @@ class BotTranslations:
             'processing_failed': '❌ So\'rovni qayta ishlab bo\'lmadi',
             'feature_not_implemented': '🚧 Funksiya hali amalga oshirilmagan. Tez orada mavjud bo\'ladi!',
             
+            # Statistics
+            'statistics': 'Statistika:',
+            'income': 'Daromadlar',
+            'expense': 'Xarajatlar',
+            'transactions': 'Tranzaksiyalar',
+            'categories_title': 'Sizning kategoriyalaringiz:',
+            'no_categories': 'Sizda hali kategoriyalar yo\'q',
+            'create_category_hint': 'Yangi kategoriya yaratish uchun yozing:\n"kategoriya yarat [nomi]"',
+            
             # General
             'yes': 'Ha',
             'no': 'Yo\'q',
             'cancel': 'Bekor qilish',
             'save': 'Saqlash',
             'loading': 'Yuklamoqda...',
+            
+            # Удаление категорий и транзакций
+            'category_created': 'Kategoriya yaratildi',
+            'category_exists': 'Kategoriya mavjud',
+            'category_deleted': 'Kategoriya o\'chirildi',
+            'category_not_found': 'Kategoriya topilmadi',
+            'transaction_deleted': 'Tranzaksiya o\'chirildi',
+            'transaction_not_found': 'Tranzaksiya topilmadi',
+            'currency_changed': 'Valyuta o\'zgartirildi: {currency}'
         }
     }
     
@@ -292,74 +346,50 @@ class BotTranslations:
     def get_language_keyboard(cls) -> Dict[str, Any]:
         """Возвращает клавиатуру выбора языка"""
         return {
-            'inline_keyboard': [
-                [
-                    {'text': '🇷🇺 Русский', 'callback_data': 'lang_ru'},
-                    {'text': '🇺🇸 English', 'callback_data': 'lang_en'}
-                ],
-                [
-                    {'text': '🇺🇿 O\'zbekcha', 'callback_data': 'lang_uz'}
-                ]
-            ]
+            'keyboard': [
+                ['🇷🇺 Русский', '🇺🇸 English'],
+                ['🇺🇿 O\'zbekcha']
+            ],
+            'resize_keyboard': True,
+            'one_time_keyboard': True
         }
     
     @classmethod
     def get_currency_keyboard(cls, language: str = 'ru') -> Dict[str, Any]:
         """Возвращает клавиатуру выбора валюты"""
         return {
-            'inline_keyboard': [
-                [
-                    {'text': f'💵 {cls.get_text("usd", language)}', 'callback_data': 'curr_usd'},
-                    {'text': f'💶 {cls.get_text("eur", language)}', 'callback_data': 'curr_eur'}
-                ],
-                [
-                    {'text': f'💴 {cls.get_text("uzs", language)}', 'callback_data': 'curr_uzs'},
-                    {'text': f'💷 {cls.get_text("rub", language)}', 'callback_data': 'curr_rub'}
-                ]
-            ]
+            'keyboard': [
+                [f'💵 {cls.get_text("usd", language)}', f'💶 {cls.get_text("eur", language)}'],
+                [f'💴 {cls.get_text("uzs", language)}', f'💷 {cls.get_text("rub", language)}']
+            ],
+            'resize_keyboard': True,
+            'one_time_keyboard': True
         }
     
     @classmethod
     def get_settings_keyboard(cls, language: str = 'ru') -> Dict[str, Any]:
         """Возвращает клавиатуру настроек"""
         return {
-            'inline_keyboard': [
-                [
-                    {'text': cls.get_text('settings_language', language), 'callback_data': 'set_language'}
-                ],
-                [
-                    {'text': cls.get_text('settings_currency', language), 'callback_data': 'set_currency'}
-                ],
-                [
-                    {'text': cls.get_text('settings_phone', language), 'callback_data': 'set_phone'}
-                ],
-                [
-                    {'text': cls.get_text('back_button', language), 'callback_data': 'back_to_menu'}
-                ]
-            ]
+            'keyboard': [
+                [cls.get_text('settings_language', language)],
+                [cls.get_text('settings_currency', language)],
+                [cls.get_text('settings_phone', language)],
+                [cls.get_text('back_button', language)]
+            ],
+            'resize_keyboard': True
         }
     
     @classmethod
     def get_main_menu_keyboard(cls, language: str = 'ru') -> Dict[str, Any]:
         """Возвращает главную клавиатуру меню"""
         return {
-            'inline_keyboard': [
-                [
-                    {'text': cls.get_text('menu_balance', language), 'callback_data': 'show_balance'},
-                    {'text': cls.get_text('menu_history', language), 'callback_data': 'show_history'},
-                ],
-                [
-                    {'text': cls.get_text('menu_categories', language), 'callback_data': 'show_categories'},
-                    {'text': cls.get_text('menu_goals', language), 'callback_data': 'show_goals'},
-                ],
-                [
-                    {'text': cls.get_text('menu_debts', language), 'callback_data': 'show_debts'},
-                    {'text': cls.get_text('menu_settings', language), 'callback_data': 'show_settings'},
-                ],
-                [
-                    {'text': cls.get_text('menu_help', language), 'callback_data': 'show_help'},
-                ]
-            ]
+            'keyboard': [
+                [cls.get_text('menu_balance', language), cls.get_text('menu_history', language)],
+                [cls.get_text('menu_categories', language), cls.get_text('menu_goals', language)],
+                [cls.get_text('menu_debts', language), cls.get_text('menu_settings', language)],
+                [cls.get_text('menu_help', language)]
+            ],
+            'resize_keyboard': True
         }
 
 

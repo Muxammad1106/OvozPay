@@ -19,7 +19,8 @@ class WhisperService:
     """Сервис для распознавания речи через OpenAI Whisper (локально)"""
     
     def __init__(self):
-        self.model_name = getattr(settings, 'WHISPER_MODEL', 'base')  # tiny, base, small, medium, large
+        # ОПТИМИЗАЦИЯ: Используем самую быструю модель по умолчанию
+        self.model_name = getattr(settings, 'WHISPER_MODEL', 'tiny')  # tiny для максимальной скорости
         self.supported_languages = ['ru', 'uz', 'en']
         self.temp_dir = Path(tempfile.gettempdir()) / 'ovozpay_audio'
         self.temp_dir.mkdir(exist_ok=True)
@@ -34,7 +35,7 @@ class WhisperService:
                 ['whisper', '--help'], 
                 capture_output=True, 
                 text=True, 
-                timeout=10
+                timeout=5  # Сокращено время ожидания
             )
             if result.returncode != 0:
                 raise Exception("Whisper не найден")
@@ -50,7 +51,7 @@ class WhisperService:
         user_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Преобразует аудио в текст
+        Преобразует аудио в текст (ОПТИМИЗИРОВАННАЯ ВЕРСИЯ)
         
         Args:
             audio_file_path: Путь к аудио файлу
@@ -71,10 +72,10 @@ class WhisperService:
                 logger.warning(f"Неподдерживаемый язык {language}, используем 'ru'")
                 language = 'ru'
             
-            logger.info(f"Начинаем распознавание аудио для пользователя {user_id}")
+            logger.info(f"🎤 Начинаем БЫСТРОЕ распознавание аудио для пользователя {user_id}")
             
-            # Запускаем Whisper в отдельном процессе
-            result = await self._run_whisper_transcription(audio_file_path, language)
+            # ОПТИМИЗАЦИЯ: Запускаем Whisper в отдельном процессе с минимальными параметрами
+            result = await self._run_optimized_whisper_transcription(audio_file_path, language)
             
             # Обрабатываем результат
             if result and result.get('text'):
@@ -90,8 +91,8 @@ class WhisperService:
                 }
                 
                 logger.info(
-                    f"Распознавание завершено за {processing_time:.2f}с: "
-                    f"'{transcription_result['text'][:50]}...'"
+                    f"⚡ БЫСТРОЕ распознавание завершено за {processing_time:.1f}с: "
+                    f"'{transcription_result['text'][:30]}...'"
                 )
                 
                 return transcription_result
@@ -101,35 +102,46 @@ class WhisperService:
                 
         except Exception as e:
             processing_time = asyncio.get_event_loop().time() - start_time
-            logger.error(f"Ошибка распознавания аудио за {processing_time:.2f}с: {e}")
+            logger.error(f"Ошибка распознавания аудио за {processing_time:.1f}с: {e}")
             return None
     
-    async def _run_whisper_transcription(
+    async def _run_optimized_whisper_transcription(
         self, 
         audio_file_path: str, 
         language: str
     ) -> Optional[Dict[str, Any]]:
-        """Запускает процесс распознавания Whisper"""
+        """ОПТИМИЗИРОВАННЫЙ запуск процесса распознавания Whisper"""
         try:
-            # Команда для Whisper с JSON выводом
+            # ОПТИМИЗАЦИЯ: Минимальная команда для максимальной скорости
             command = [
                 'whisper',
                 audio_file_path,
-                '--model', self.model_name,
+                '--model', self.model_name,  # tiny модель
                 '--language', language,
                 '--output_format', 'json',
                 '--output_dir', str(self.temp_dir),
-                '--verbose', 'False'
+                '--verbose', 'False',
+                '--task', 'transcribe',  # Только транскрибция
+                '--fp16', 'False',  # Отключаем fp16 для совместимости
+                '--best_of', '1',  # Только один проход
+                '--beam_size', '1',  # Минимальный beam size
+                '--temperature', '0'  # Детерминированный вывод
             ]
             
-            # Запускаем в отдельном процессе асинхронно
-            process = await asyncio.create_subprocess_exec(
-                *command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+            # ОПТИМИЗАЦИЯ: Запускаем в отдельном процессе асинхронно с таймаутом
+            process = await asyncio.wait_for(
+                asyncio.create_subprocess_exec(
+                    *command,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                ),
+                timeout=30  # Максимум 30 секунд
             )
             
-            stdout, stderr = await process.communicate()
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(),
+                timeout=25  # Максимум 25 секунд на выполнение
+            )
             
             if process.returncode != 0:
                 logger.error(f"Ошибка Whisper: {stderr.decode()}")
@@ -144,14 +156,20 @@ class WhisperService:
                 with open(json_file, 'r', encoding='utf-8') as f:
                     result = json.load(f)
                 
-                # Очищаем временный файл
-                json_file.unlink()
+                # ОПТИМИЗАЦИЯ: Сразу очищаем временный файл
+                try:
+                    json_file.unlink()
+                except:
+                    pass
                 
                 return result
             else:
                 logger.error("JSON файл результата не найден")
                 return None
                 
+        except asyncio.TimeoutError:
+            logger.error("Тайм-аут при распознавании речи")
+            return None
         except Exception as e:
             logger.error(f"Ошибка выполнения Whisper: {e}")
             return None
