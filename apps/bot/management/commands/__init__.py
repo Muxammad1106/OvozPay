@@ -1,0 +1,1 @@
+# Django management commands для OvozPay bot 
