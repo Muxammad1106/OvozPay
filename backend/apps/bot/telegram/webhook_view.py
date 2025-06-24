@@ -25,13 +25,15 @@ class TelegramWebhookView(View):
             update_data = json.loads(request.body)
             
             # Логируем входящее обновление
-            logger.info(f"Получено обновление от Telegram: {update_data}")
+            logger.info(f"📥 Получено обновление от Telegram: {update_data}")
             
             # Инициализируем бот клиент
             bot_client = TelegramBotClient()
             
             # Обрабатываем обновление
+            logger.info(f"🔄 Начинаем обработку обновления...")
             bot_client.handle_update(update_data)
+            logger.info(f"✅ Обновление успешно обработано")
             
             # Возвращаем успешный ответ
             return HttpResponse("OK", status=200)

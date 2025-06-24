@@ -11,13 +11,12 @@ TEST_TELEGRAM_CHAT_ID = 123456789
 TEST_PHONE_NUMBER = '+998901234567'
 
 def test_telegram_auth():
-    """Тестирует аутентификацию по Telegram ID"""
     print("🧪 Тестирование Telegram аутентификации...")
     
-    # URL для аутентификации
+    
     auth_url = f"{BASE_URL}/api/users/auth/telegram-login/"
     
-    # Данные для запроса
+    
     auth_data = {
         'telegram_chat_id': TEST_TELEGRAM_CHAT_ID,
         'phone_number': TEST_PHONE_NUMBER

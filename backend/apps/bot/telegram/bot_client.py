@@ -50,8 +50,12 @@ class TelegramBotClient:
         try:
             message = update.get('message', {})
             
+            # Проверяем наличие контакта (номера телефона)
+            if 'contact' in message:
+                self._handle_contact_message(update)
+            
             # Проверяем наличие текста (команды)
-            if 'text' in message:
+            elif 'text' in message:
                 self._handle_text_message(update)
             
             # Проверяем наличие голосового сообщения
@@ -227,4 +231,89 @@ class TelegramBotClient:
             )
             
         except Exception as e:
-            logger.error(f"Ошибка обработки callback query: {e}") 
+            logger.error(f"Ошибка обработки callback query: {e}")
+    
+    def _handle_contact_message(self, update: Dict[str, Any]) -> None:
+        """
+        Обрабатывает контакт (номер телефона)
+        """
+        message = update.get('message', {})
+        contact = message.get('contact', {})
+        chat_id = message.get('chat', {}).get('id')
+        from_user = message.get('from', {})
+        
+        if not chat_id:
+            return
+        
+        # Выполняем в отдельном потоке для избежания блокировки
+        import threading
+        thread = threading.Thread(
+            target=self._process_contact_message,
+            args=(contact, chat_id, from_user)
+        )
+        thread.start()
+    
+    def _process_contact_message(self, contact: Dict, chat_id: int, from_user: Dict) -> None:
+        """
+        Обрабатывает полученный контакт
+        """
+        try:
+            phone_number = contact.get('phone_number', '')
+            first_name = contact.get('first_name', from_user.get('first_name', ''))
+            
+            if not phone_number:
+                self.telegram_api.send_message_sync(
+                    chat_id=chat_id,
+                    text="❌ Не удалось получить номер телефона. Попробуйте еще раз."
+                )
+                return
+            
+            # Обрабатываем номер телефона (добавляем + если нет)
+            if not phone_number.startswith('+'):
+                phone_number = '+' + phone_number
+            
+            # Обновляем пользователя с номером телефона
+            from apps.users.models import User
+            
+            user, created = User.objects.get_or_create(
+                telegram_chat_id=chat_id,
+                defaults={
+                    'phone_number': phone_number,
+                    'first_name': first_name,
+                    'last_name': from_user.get('last_name', ''),
+                    'username': from_user.get('username', ''),
+                }
+            )
+            
+            if not created and user.phone_number != phone_number:
+                # Обновляем номер телефона если изменился
+                user.phone_number = phone_number
+                user.save()
+            
+            # Отправляем подтверждение
+            self.telegram_api.send_message_sync(
+                chat_id=chat_id,
+                text=(
+                    f"✅ Отлично, {first_name}!\n\n"
+                    f"📱 Ваш номер телефона {phone_number} сохранен.\n\n"
+                    f"🎉 Теперь вы можете пользоваться всеми функциями OvozPay:\n\n"
+                    f"📋 Команды:\n"
+                    f"🔹 /balance - проверить баланс\n"
+                    f"🔹 /help - справка по командам\n"
+                    f"🔹 /phone +номер - обновить номер телефона\n\n"
+                    f"🎙 Отправьте голосовое сообщение для записи транзакции!\n"
+                    f"Пример: \"Потратил 50000 сум на продукты\""
+                ),
+                reply_markup={
+                    "remove_keyboard": True
+                }
+            )
+            
+            logger.info(f"Сохранен номер телефона {phone_number} для пользователя {chat_id}")
+            
+        except Exception as e:
+            logger.error(f"Ошибка при обработке контакта: {e}")
+            self.telegram_api.send_message_sync(
+                chat_id=chat_id,
+                text="❌ Произошла ошибка при сохранении номера телефона. Попробуйте еще раз или свяжитесь с поддержкой."
+            ) 
